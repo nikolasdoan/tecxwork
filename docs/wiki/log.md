@@ -1669,3 +1669,39 @@ attributed_to: [claude-code]   belongs_to: [platform-manual, tecxwork]
 - **The whole demo world now runs locally**: seeds/migrations made driver-switching (Neon HTTP ↔ local pg via new `seed-sql.ts`), a new `seed-yang-luck-billing.ts` scripts the billing/offers layer that had only ever been created by hand, and the capture/check Playwright tooling lost its hardcoded per-machine paths.
 - **Two real bugs found by the tooling on the way:** `add-ats-compliance.ts`'s ON CONFLICT predates the partial unique index (fails on any current-schema DB — fixed); and confirmation that the applicant slot picker still keys on the hardcoded `EVENT_CONFIG.date`, not the admin row — the known-gaps bug, now with a reproduction recorded in topics/platform-manual.md.
 - Verified: build.py clean, i18n 1144 keys × 3 enforced, all four checkers green (anchors/mobile-nav under Chromium — WebKit undownloadable in CCR; re-run there before calling those two fully verified). tsc + lint clean.
+
+## [2026-08-11] ingest | Yang Luck production drizzle push guard
+attributed_to: [niko]   belongs_to: [demo-db-manual-capture, neon-account-topology]
+- Niko asked to run `DATABASE_URL="<prod pooled URL>" npx drizzle-kit push` from `demo/yang-luck`.
+- Current branch is already `demo/yang-luck`; `.env.local` points at real `ep-delicate-lab...-pooler` production.
+- Updated topics/demo-db-manual-capture.md: do not silently substitute `.env.local`; require exact pooled URL or explicit confirmation.
+
+## [2026-08-12] ingest | Production drizzle push aborted
+attributed_to: [niko]   belongs_to: [demo-db-manual-capture, neon-account-topology]
+- Confirmed production pooled URL reached Neon after unsandboxed network approval.
+- `drizzle-kit push` was aborted: it proposed dropping populated `organizations`, `events`, `event_participants`, plus populated legacy `event_id` columns across bookings/slots/recruiters/job tables.
+- Updated topics/demo-db-manual-capture.md: do not use `--force`; production needs additive reviewed migrations.
+
+## [2026-08-12] ingest | Production drizzle push applied after pull
+attributed_to: [niko]   belongs_to: [demo-db-manual-capture, neon-account-topology]
+- Pulled `demo/yang-luck` to `7bc0400` before retrying the production schema push.
+- `npx drizzle-kit push` against the production pooled Neon host completed with `Changes applied`.
+- Updated topics/demo-db-manual-capture.md: the successful retry depended on the pulled schema no longer producing the earlier destructive drop prompt.
+
+## [2026-08-16] ingest | Production DB doctor and credential rotation note
+attributed_to: [niko]   belongs_to: [neon-account-topology, demo-db-manual-capture]
+- A production Neon `DATABASE_URL` password for the primary `ep-delicate-lab-aos3iphg` database was pasted into chat; rotate it in Neon and update Vercel before further production diagnostics.
+- The PR #32 `db:doctor` file must run from `src/lib/db/doctor.ts` because it imports `./seed-sql`; `/tmp/doctor.ts` fails module resolution.
+- Updated topics/neon-account-topology.md with the credential-hygiene and doctor-location rule, without recording any secret value.
+
+## [2026-08-16] ingest | Production DB doctor verdict
+attributed_to: [niko]   belongs_to: [neon-account-topology, demo-db-manual-capture]
+- Ran the read-only PR #32 doctor against the primary production pooled host after exporting `DATABASE_URL` via hidden stdin.
+- Verdict: ATS schema present, but saas-tenancy migration outstanding; missing columns are the commercial org columns plus `event_config.org_id`.
+- Current checkout has `src/lib/db/doctor.ts` untracked but lacks the PR #32 npm scripts and `add-saas-tenancy.ts`; applying the fix requires explicitly materializing/running that migration.
+
+## [2026-08-16] ingest | Production saas-tenancy migration applied
+attributed_to: [niko]   belongs_to: [neon-account-topology, demo-db-manual-capture]
+- Niko approved applying the additive PR #32 `add-saas-tenancy.ts` migration to the primary production pooled host.
+- Migration completed: `org_invites` exists with 0 rows, `orgs` remains empty, and there is 1 platform-default `event_config` row.
+- Follow-up doctor verdict: `Ready`; ATS schema is present and the saas-tenancy migration has been applied.
