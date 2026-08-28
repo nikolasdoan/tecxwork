@@ -1882,3 +1882,10 @@ attributed_to: [niko]   belongs_to: [neon-account-topology, demo-db-manual-captu
 - Niko approved applying the additive PR #32 `add-saas-tenancy.ts` migration to the primary production pooled host.
 - Migration completed: `org_invites` exists with 0 rows, `orgs` remains empty, and there is 1 platform-default `event_config` row.
 - Follow-up doctor verdict: `Ready`; ATS schema is present and the saas-tenancy migration has been applied.
+
+## [2026-08-29] ingest | Two log.md merge conflicts resolved as unions; branch pulled current
+attributed_to: [niko]   belongs_to: [tecxwork]
+- The checkout was sitting on a half-finished merge (`MERGE_HEAD` present, `docs/wiki/log.md` unmerged) before anything could be pulled. The working copy had already been hand-resolved to *theirs plus the three newest 08-16 entries*, silently dropping three `ours` entries (the Yang Luck drizzle-push guard/abort/apply trio).
+- **`log.md` is append-only, so every conflict in it is a union, never a choice.** Both resolutions restored all headings from both sides and were verified by diffing the sorted `## ` heading sets of stages `:2` and `:3` against the result — zero missing on either side, zero markers left. That check is cheaper and more reliable than reading the hunks.
+- Second conflict came in with the pull (`e340535`, PR #19): our three drizzle-push `ingest` entries against upstream's `[2026-08-11] incident | Prod carried an unmerged branch's schema for two months`. Both kept — they describe the same production push from the operator's and the post-mortem's side, so dropping either would have lost half the story.
+- Branch `demo/yang-luck` is now current with origin (3 local merge commits ahead, unpushed). `CLAUDE.md`/`AGENTS.md` were unchanged by the pull — newest versions are the ones already in force.
