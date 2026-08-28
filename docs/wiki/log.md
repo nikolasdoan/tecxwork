@@ -1688,6 +1688,15 @@ attributed_to: [niko]   belongs_to: [demo-db-manual-capture, neon-account-topolo
 - `npx drizzle-kit push` against the production pooled Neon host completed with `Changes applied`.
 - Updated topics/demo-db-manual-capture.md: the successful retry depended on the pulled schema no longer producing the earlier destructive drop prompt.
 
+## [2026-08-11] incident | Prod carried an unmerged branch's schema for two months
+attributed_to: [claude-code]   belongs_to: [tecxwork, neon-account-topology]
+- Migrating prod ahead of fast-forwarding `main` onto the ATS codebase, `drizzle-kit push` asked ~30 create-vs-rename questions. Those questions *were* the finding: drizzle only asks when the database holds an object the schema doesn't.
+- Cause: `41183dd` on `multi-tenant-exploration` (06-06) — **applied to prod, never merged anywhere**. Its own message says so: *"Applied + verified in prod … 39 memberships, 170 participants."* Left `organizations`, `events`, `event_participants`, `memberships`, `event_id` on 9 tables, and two orphan enums.
+- **The hazard produced no prompt.** `memberships` exists in both schemas with different meanings (FK→`organizations` vs `orgs`; `membership_role` vs `member_role`; index order flipped). Being an existing table, drizzle would have silently ALTERed it — reshaping the ATS **access-control** table around 39 rows of unrelated event data.
+- **Decision: park, don't drop.** `schemaFilter` defaults to `public`, so moving orphans to a `legacy` schema hides them from drizzle while keeping rows recoverable. Enums travel with their tables (a referenced enum can't be dropped). `event_id` dropped outright — 1 event existed, so the column held no information. Push then ran purely additive: 22 tables, no prompts. Full record: [decisions/2026-08-11-prod-schema-drift-legacy-parking.md](decisions/2026-08-11-prod-schema-drift-legacy-parking.md).
+- **Rule established:** never apply a migration to prod from an unmerged branch, and treat *any* prompt from a prod `push` as a stop signal. Corollary both agents on this problem learned the hard way — the repo is not a description of production; check the database.
+- `main` fast-forwarded `00646e1 → 7bc0400` afterwards. `legacy` still holds ~737 rows; `DROP SCHEMA legacy CASCADE` once the deploy is confirmed good.
+
 ## [2026-08-11] fix | Client branding removed from the public site; brand made per-deployment
 attributed_to: [niko]   belongs_to: [tecxwork, design-system]
 - niko: *"remove any yangluck branding i dont want to expose our customer now."* Moving `main` onto this codebase put a **client's name and logo on the public site** — the header, splash, footer, page title and several copy strings were hardcoded to Yang Luck.
